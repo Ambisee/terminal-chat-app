@@ -88,7 +88,7 @@ class Server(BaseSocket):
             try:
                 msg = self.receive_message(conn)
             except ConnectionResetError or ConnectionAbortedError as e:
-                print('[ERROR] %s encoutered by %s:%d - e' % (type(e).__name__, *self.addresses[conn], e))
+                print('[ERROR] %s encoutered by %s:%d - %s' % (type(e).__name__, *self.addresses[conn], e))
                 msg = self.CLIENT_DISCONNECT_MESSAGE
             except BlockingIOError as e:
                 continue
