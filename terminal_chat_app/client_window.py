@@ -4,14 +4,14 @@ Provides the interface to accomodate the Client class
 '''
 # --- Libraries --- #
 import sys
-import time
 import curses
 from traceback import print_exc
-from typing import List, Text, Union
-from curses.textpad import Textbox
+from typing import Callable, Dict, List, Union
 from curses import ascii
+from curses.textpad import Textbox
 
 from .client import Client
+from .key_maps import initialize_keymap
 
 
 # --- Functions --- #
@@ -25,7 +25,6 @@ def setup_colorpairs() -> None:
 
     return
 
-
 def ask_address_window(stdscr: curses.window) -> Union[Client, int]:
     '''
     Initialize the window that asks the user for an address
@@ -37,7 +36,7 @@ def ask_address_window(stdscr: curses.window) -> Union[Client, int]:
         '''
         if x == ascii.ESC:
             print('Process exited with return value 0')
-            sys.exit()
+            sys.exit(0)
 
         return x
 
@@ -84,7 +83,6 @@ def ask_address_window(stdscr: curses.window) -> Union[Client, int]:
 
     return client
 
-
 def ask_username(stdscr: curses.window, client: Client) -> Union[str, int]:
     '''
     Asks for the username that will be used within the chat room
@@ -97,7 +95,7 @@ def ask_username(stdscr: curses.window, client: Client) -> Union[str, int]:
             client.send_username(client.CLIENT_DISCONNECT_MESSAGE)
             client.close_socket()
             print('Process exited with return value 0')
-            sys.exit()
+            sys.exit(0)
 
         return x
 
@@ -111,7 +109,7 @@ def ask_username(stdscr: curses.window, client: Client) -> Union[str, int]:
 
     while True:
         tb.edit(tb_function)
-        result = tb.gather().strip()
+        result: str = tb.gather().strip()
 
         try:
             if len(result) < 1:
@@ -146,19 +144,25 @@ def ask_username(stdscr: curses.window, client: Client) -> Union[str, int]:
 
     return client.PROCEED_MESSAGE
 
-
 def chat_room(stdscr: curses.window, client: Client) -> int:
     '''
     Displays the chat room interface for the user
     '''
-    pad_maxline = 20
+    PAD_MAXLINE: int = 10
 
-    key = None
-    current_text = []
-    textpad_chats = ['<Interface>: You joined the room\n']
-    current_pad_scroll = 0
+    key: Union[None, str] = None
+    current_text: List[str] = []
+    textpad_chats: List[str] = ['<Interface>: You joined the room\n']
+    current_pad_scroll: int = 0
+    keymap: Dict[str, Callable[[], None]] = initialize_keymap(
+        current_text,
+        client
+    )
     
     def receive_broadcast(message: str, message_list: List[str]) -> None:
+        '''
+        Append messages received from the server to the message list
+        '''
         message_list.append(message + '\n')
     
     stdscr.nodelay(True)
@@ -167,45 +171,33 @@ def chat_room(stdscr: curses.window, client: Client) -> int:
     while key != ascii.ESC:
         
         stdscr.clear()
-        for i in range(current_pad_scroll, current_pad_scroll + min(pad_maxline, len(textpad_chats))):
+        for i in range(current_pad_scroll, current_pad_scroll + min(PAD_MAXLINE, len(textpad_chats))):
             stdscr.addstr(textpad_chats[i])
-        stdscr.addstr(pad_maxline + 2, 0, '<You>: ')
-        stdscr.addstr(pad_maxline + 2, len('<You>: '), ''.join(current_text))
+        stdscr.addstr(PAD_MAXLINE + 2, 0, '<You>: ')
+        stdscr.addstr(PAD_MAXLINE + 2, len('<You>: '), ''.join(current_text))
         stdscr.refresh()
 
         try:
             key = stdscr.getkey()
-        except: 
+        except Exception: 
             key = None
         
         try:
-            if not key:
+            if key is None:
                 continue
-            elif key == curses.KEY_UP and current_pad_scroll > 0:
-                current_pad_scroll -= 1
-            elif key == curses.KEY_DOWN and current_pad_scroll + pad_maxline < len(textpad_chats):
-                current_pad_scroll += 1
-            elif ord(key) in range(33, 127):
-                current_text.append(key)
-            elif ord(key) == 32:
-                current_text.append(' ')
-            elif key == ascii.ESC:
-                client.send_client_message('!quit')
-                return 0
-            elif key in (curses.KEY_BACKSPACE, '\b', '\x7f') and len(current_text) > 0:
-                current_text.pop()
-            elif key in (curses.KEY_ENTER, '\n', '\r') and len(current_text) > 0:
-                message = ''.join(current_text)
-            
-                response = client.send_client_message(message)
-                current_text.clear()
-                if response == client.CLIENT_DISCONNECT_MESSAGE:
-                    return 0
+            if key == 'KEY_UP':
+                if  current_pad_scroll > 0:
+                    current_pad_scroll -= 1
+            elif key == 'KEY_DOWN':
+                if  current_pad_scroll + PAD_MAXLINE < len(textpad_chats):
+                    current_pad_scroll += 1
+            else:
+                keymap[key]()
         except Exception:
+            print_exc(1000)
             client.send_client_message(client.CLIENT_DISCONNECT_MESSAGE)
 
     return 0
-
 
 def init_main_screen(stdscr: curses.window) -> int:
     '''

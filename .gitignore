@@ -1,2 +1,7 @@
 # Folders
 **/__pycache__
+.vscode
+virtualenv
+
+# .env files
+**/.env

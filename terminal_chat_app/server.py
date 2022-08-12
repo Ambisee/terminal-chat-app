@@ -7,7 +7,7 @@ import socket
 import threading
 from traceback import format_exc
 import traceback
-from typing import Dict, List, Set, Union
+from typing import Dict, List, Set, Tuple, Union
 
 from dotenv import load_dotenv
 
@@ -24,10 +24,10 @@ class Server(BaseSocket):
         Initialization
         '''
         self.server_socket: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.host_address = (host, port)
+        self.host_address: Tuple[str, int] = (host, port)
         self.addresses: Dict[socket.socket, str] = {}
         self.existing_usernames: Set[str] = set()
-        self.server_up = True
+        self.server_up: bool = True
 
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
@@ -45,8 +45,9 @@ class Server(BaseSocket):
 
     def accept_client_connection(self) -> None:
         '''
-        Handles incoming client connections.
-        Run in an infinite loop on the Main thread.
+        Accepts incoming client connections and dispatches a handler
+        in a new thread to handle each of those connections.
+        Runs in an infinite loop on the Main thread.
         '''
         try:
             while self.server_up:
@@ -71,9 +72,11 @@ class Server(BaseSocket):
 
     def handle_client(self, conn: socket.socket) -> None:
         '''
-        Handles incoming client packets
+        Individual handler function that assigns an alias
+        for a single connection and handles incoming messages
+        from the client.
         '''
-        name = self.handle_username_assignment(conn)
+        name: str = self.handle_username_assignment(conn)
         
         if name == self.CLIENT_DISCONNECT_MESSAGE:
             print('[INFO] %s:%d disconnecting...' % self.addresses[conn])
@@ -82,13 +85,13 @@ class Server(BaseSocket):
             return
         
         self.existing_usernames.add(name)
-        self.broadcast('<Server>: %s connected' % name)
+        self.broadcast('<Server>: %s connected - %d users online' % (name, len(self.addresses)))
 
         while self.server_up:
             try:
-                msg = self.receive_message(conn)
+                msg: str = self.receive_message(conn)
             except ConnectionResetError or ConnectionAbortedError as e:
-                print('[ERROR] %s encoutered by %s:%d - %s' % (type(e).__name__, *self.addresses[conn], e))
+                print('[WARNING] %s encoutered by %s:%d - %s' % (type(e).__name__, *self.addresses[conn], e))
                 msg = self.CLIENT_DISCONNECT_MESSAGE
             except BlockingIOError as e:
                 continue
@@ -102,7 +105,8 @@ class Server(BaseSocket):
                 self.existing_usernames.remove(name)
                 del self.addresses[conn]
                 
-                if len(self.addresses) > 0: self.broadcast(f'<Server>: {name} disconnected from the server')
+                if len(self.addresses) > 0: 
+                    self.broadcast('<Server>: %s disconnected from the server - %d users online' % (name, len(self.addresses)))
                 conn.close()
 
                 break
@@ -117,7 +121,7 @@ class Server(BaseSocket):
         '''
         Handle the assignment of a new user's username assignment
         '''
-        name = self.receive_message(conn)
+        name: str = self.receive_message(conn)
         
         # If the check returns None, proceed to return the name to the client handler
         while (check := self.check_username_validity(name)):
@@ -141,9 +145,9 @@ class Server(BaseSocket):
 
     def broadcast(self, message:str) -> None:
         '''
-        Send a message to all connected clients
+        Send a message to all connected clients.
         '''
         for client in self.addresses.keys():
             self.send_message(client, message)
-        
+            
         return

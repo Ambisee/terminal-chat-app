@@ -67,7 +67,7 @@ class Client(BaseSocket):
         try:
             self.send_message(self.client_socket, message)
             
-            if any(message in x for x in  [BaseSocket.CLIENT_DISCONNECT_MESSAGE]):
+            if any(message == x for x in [BaseSocket.CLIENT_DISCONNECT_MESSAGE]):
                 self.close_socket()
                 return message
 
