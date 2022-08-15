@@ -1,7 +1,13 @@
 # Folders
 **/__pycache__
-.vscode
 virtualenv
+run_client
+run_server
+.vscode
 
 # .env files
 **/.env
+
+# Other files
+run_test_client.py
+*.zip

@@ -1,13 +1,11 @@
 '''
-key_maps.py
-
+key_maps.py:
 Provides mapping between keyboard keys
 and their callback functions
 '''
 # --- Libraries --- #
 import sys
 import string
-import curses
 from typing import List, NoReturn, Union, Dict, Callable
 
 from .client import Client
