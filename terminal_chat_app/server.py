@@ -5,11 +5,7 @@ Contains the interface and implementation for the Server class
 # --- Libraries --- #
 import socket
 import threading
-from traceback import format_exc
-import traceback
-from typing import Dict, List, Set, Tuple, Union
-
-from dotenv import load_dotenv
+from typing import Dict, Set, Tuple, Union
 
 from .base_socket import BaseSocket
 
@@ -126,6 +122,10 @@ class Server(BaseSocket):
         # If the check returns None, proceed to return the name to the client handler
         while (check := self.check_username_validity(name)):
             self.send_message(conn, check)
+
+            if check == self.CLIENT_DISCONNECT_MESSAGE:
+                return self.CLIENT_DISCONNECT_MESSAGE
+
             name = self.receive_message(conn)
         
         self.send_message(conn, name)
@@ -139,6 +139,9 @@ class Server(BaseSocket):
         # Check if the username has been used, return None if it has not
         if username in self.existing_usernames:
             return self.USERNAME_EXISTS_MESSAGE
+        
+        if username == self.CLIENT_DISCONNECT_MESSAGE:
+            return self.CLIENT_DISCONNECT_MESSAGE
 
         return None
         

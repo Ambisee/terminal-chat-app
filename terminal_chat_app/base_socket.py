@@ -5,10 +5,12 @@ Contains the interface and implementation for the Base class
 # --- Libraries --- #
 import os
 import socket
-from typing import Union
 
+from dotenv import load_dotenv
 
 # --- Class --- #
+load_dotenv()
+
 class BaseSocket:
     '''
     Base class - 
@@ -29,7 +31,7 @@ class BaseSocket:
         '''
         Send encoded messages throught the socket
         '''
-        message_length = str(len(message)).encode(self.FORMAT)
+        message_length: bytes = str(len(message)).encode(self.FORMAT)
         message_length += b' ' * (self.HEADER - len(message_length))
 
         conn.send(message_length)
@@ -42,8 +44,8 @@ class BaseSocket:
         '''
         Decode incoming messages
         '''
-        message_length = conn.recv(self.HEADER).decode(self.FORMAT)
-        message_length = int(message_length)
+        message_length: str = conn.recv(self.HEADER).decode(self.FORMAT)
+        message_length: int = int(message_length)
 
-        message = conn.recv(message_length).decode(self.FORMAT)
+        message: str = conn.recv(message_length).decode(self.FORMAT)
         return message
